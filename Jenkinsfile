@@ -7,7 +7,7 @@ pipeline {
   }
 
   triggers {
-    pollSCM('H/2 * * * *')
+    pollSCM('H/5 * * * * *')
   }
 
   environment {
@@ -104,7 +104,7 @@ pipeline {
           JAR=$(ls "${WORKSPACE}"/target/spring-petclinic-*.jar | head -1)
           ansible-playbook /var/jenkins_home/deploy-playbook.yml \
             -i "${PRODUCTION_VM_IP}," \
-            -u gdiwan \
+            -u akanshc \
             --private-key /var/jenkins_home/.ssh/id_rsa \
             -e "jar_path=${JAR}" \
             --ssh-common-args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'

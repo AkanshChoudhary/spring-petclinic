@@ -99,7 +99,6 @@ pipeline {
     stage('Deploy to production (Ansible)') {
       steps {
         sh '''
-          set -euo pipefail
           chmod 600 /var/jenkins_home/.ssh/id_rsa || true
           JAR=$(ls "${WORKSPACE}"/target/spring-petclinic-*.jar | head -1)
           ansible-playbook /var/jenkins_home/deploy-playbook.yml \

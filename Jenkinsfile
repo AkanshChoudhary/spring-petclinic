@@ -78,7 +78,7 @@ pipeline {
           echo $! > /tmp/petclinic-zap.pid
           sleep 75
           CID=$(docker ps -qf "name=^jenkins$")
-          docker run --rm \
+          docker run --rm --user root \
             -v "$WORKSPACE:/zap/wrk:z" \
             --network "container:${CID}" \
             ghcr.io/zaproxy/zaproxy:stable \

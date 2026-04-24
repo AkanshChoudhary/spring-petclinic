@@ -34,7 +34,7 @@ pipeline {
       }
     }
 
-    stage('Tests') {
+    stage('Unit Tests') {
       steps {
         sh './mvnw -B -ntp test -Dsurefire.excludes=**/PostgresIntegrationTests.java,**/MySqlIntegrationTests.java'
       }

@@ -89,6 +89,7 @@ pipeline {
           mkdir -p zap-out
           mv zap-report.html zap-out/ 2>/dev/null
           mv zap-report.json zap-out/ 2>/dev/null
+          true
         '''
       }
       post {

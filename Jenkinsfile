@@ -10,17 +10,17 @@ pipeline {
   }
 
   triggers {
-    // jenkins scm polling can't go below about a minute
     pollSCM('* * * * *')
   }
 
   environment {
     SONAR_HOST = 'http://sonarqube:9000'
-    JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
+    JAVA_HOME  = '/usr/lib/jvm/java-21-openjdk-amd64'
     PRODUCTION_VM_IP = "${env.PRODUCTION_VM_IP}"
   }
 
   stages {
+
     stage('Checkout') {
       steps {
         checkout scm
@@ -36,11 +36,15 @@ pipeline {
 
     stage('Unit Tests') {
       steps {
-        sh './mvnw -B -ntp test -Dsurefire.excludes=**/PostgresIntegrationTests.java,**/MySqlIntegrationTests.java'
+        sh '''
+          ./mvnw -B -ntp test \
+            -Dsurefire.excludes=**/PostgresIntegrationTests.java,**/MySqlIntegrationTests.java
+        '''
       }
       post {
         always {
-          junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+          junit allowEmptyResults: true,
+               testResults: '**/target/surefire-reports/*.xml'
         }
       }
     }
@@ -55,6 +59,7 @@ pipeline {
           if (!token?.trim()) {
             error('No sonar token file. Run ansible again or add the sonar-token credential in jenkins.')
           }
+
           withEnv(["SONAR_TOKEN=${token}"]) {
             sh '''
               ./mvnw -B -ntp sonar:sonar \
@@ -70,26 +75,33 @@ pipeline {
     stage('Security scan (OWASP ZAP)') {
       steps {
         sh '''
-          set +e
           JAR=$(ls target/spring-petclinic-*.jar | head -1)
-          nohup java -jar "$JAR" --server.port=8090 > /tmp/petclinic-zap.log 2>&1 &
-          echo $! > /tmp/petclinic-zap.pid
+          nohup java -jar "$JAR" --server.port=8090 \
+            > /tmp/petclinic-zap.log 2>&1 &
+          APP_PID=$!
           sleep 75
 
+          # figure out the host-side path for the jenkins workspace dir
           CID=$(docker ps -qf "name=^jenkins$")
-          HOST_WORKSPACE=$(docker inspect jenkins --format '{{ range .Mounts }}{{ if eq .Destination "/var/jenkins_home" }}{{ .Source }}{{ end }}{{ end }}')/workspace/spring-petclinic
+          JENKINS_HOME_HOST=$(docker inspect jenkins \
+            --format '{{ range .Mounts }}{{ if eq .Destination "/var/jenkins_home" }}{{ .Source }}{{ end }}{{ end }}')
+          HOST_WS="${JENKINS_HOME_HOST}/workspace/spring-petclinic"
 
           docker run --rm --user root \
-            -v "${HOST_WORKSPACE}:/zap/wrk:z" \
+            -v "${HOST_WS}:/zap/wrk:z" \
             --network "container:${CID}" \
             ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py -t http://127.0.0.1:8090 -I \
+            zap-baseline.py \
+              -t http://127.0.0.1:8090 \
+              -I \
               -r zap-report.html \
-              -J zap-report.json || true
+              -J zap-report.json \
+            || true
 
-          if [ -f /tmp/petclinic-zap.pid ]; then
-            kill "$(cat /tmp/petclinic-zap.pid)" 2>/dev/null || true
-          fi
+          # stop the app
+          kill $APP_PID 2>/dev/null || true
+
+          # keep a copy on the jenkins volume for easy access
           mkdir -p /var/jenkins_home/zap-reports
           cp zap-report.html /var/jenkins_home/zap-reports/ 2>/dev/null
           cp zap-report.json /var/jenkins_home/zap-reports/ 2>/dev/null
@@ -102,7 +114,9 @@ pipeline {
       steps {
         sh '''
           chmod 600 /var/jenkins_home/.ssh/id_rsa || true
+
           JAR=$(ls "${WORKSPACE}"/target/spring-petclinic-*.jar | head -1)
+
           ansible-playbook /var/jenkins_home/deploy-playbook.yml \
             -i "${PRODUCTION_VM_IP}," \
             -u akanshc \

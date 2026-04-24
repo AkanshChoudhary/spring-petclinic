@@ -83,8 +83,8 @@ pipeline {
             --network "container:${CID}" \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py -t http://127.0.0.1:8090 -I \
-              -r /zap/wrk/zap-report-dir/zap-report.html \
-              -J /zap/wrk/zap-report-dir/zap-report.json || true
+              -r zap-report-dir/zap-report.html \
+              -J zap-report-dir/zap-report.json || true
           if [ -f /tmp/petclinic-zap.pid ]; then
             kill "$(cat /tmp/petclinic-zap.pid)" 2>/dev/null || true
           fi

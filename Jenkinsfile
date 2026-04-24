@@ -108,6 +108,18 @@ pipeline {
           true
         '''
       }
+      post {
+        always {
+          publishHTML([
+            reportDir: '/var/jenkins_home/zap-reports',
+            reportFiles: 'zap-report.html',
+            reportName: 'ZAP Security Report',
+            keepAll: true,
+            alwaysLinkToLastBuild: true,
+            allowMissing: true
+          ])
+        }
+      }
     }
 
     stage('Deploy') {

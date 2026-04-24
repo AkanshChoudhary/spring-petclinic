@@ -71,6 +71,8 @@ pipeline {
       steps {
         sh '''
           set +e
+          rm -rf zap-report-dir
+          mkdir -p zap-report-dir
           JAR=$(ls target/spring-petclinic-*.jar | head -1)
           nohup java -jar "$JAR" --server.port=8090 > /tmp/petclinic-zap.log 2>&1 &
           echo $! > /tmp/petclinic-zap.pid
@@ -80,7 +82,9 @@ pipeline {
             -v "$WORKSPACE:/zap/wrk:z" \
             --network "container:${CID}" \
             ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py -t http://127.0.0.1:8090 -I -r /zap/wrk/zap-report.html -J /zap/wrk/zap-report.json || true
+            zap-baseline.py -t http://127.0.0.1:8090 -I \
+              -r /zap/wrk/zap-report-dir/zap-report.html \
+              -J /zap/wrk/zap-report-dir/zap-report.json || true
           if [ -f /tmp/petclinic-zap.pid ]; then
             kill "$(cat /tmp/petclinic-zap.pid)" 2>/dev/null || true
           fi
@@ -90,7 +94,7 @@ pipeline {
         always {
           publishHTML([
             reportName: 'ZAP Baseline Report',
-            reportDir: '.',
+            reportDir: 'zap-report-dir',
             reportFiles: 'zap-report.html',
             keepAll: true,
             alwaysLinkToLastBuild: true,

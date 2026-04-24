@@ -86,23 +86,11 @@ pipeline {
           if [ -f /tmp/petclinic-zap.pid ]; then
             kill "$(cat /tmp/petclinic-zap.pid)" 2>/dev/null || true
           fi
-          mkdir -p zap-out
-          mv zap-report.html zap-out/ 2>/dev/null
-          mv zap-report.json zap-out/ 2>/dev/null
+          mkdir -p /var/jenkins_home/zap-reports
+          cp zap-report.html /var/jenkins_home/zap-reports/ 2>/dev/null
+          cp zap-report.json /var/jenkins_home/zap-reports/ 2>/dev/null
           true
         '''
-      }
-      post {
-        always {
-          publishHTML([
-            reportName: 'ZAP Baseline Report',
-            reportDir: 'zap-out',
-            reportFiles: 'zap-report.html',
-            keepAll: true,
-            alwaysLinkToLastBuild: true,
-            allowMissing: true
-          ])
-        }
       }
     }
 

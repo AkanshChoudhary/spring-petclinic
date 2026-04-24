@@ -1,3 +1,6 @@
+// Build petclinic, run tests (no mysql/postgres ITs), sonar, OWASP ZAP baseline, deploy jar with ansible.
+// Polls git every minute. PRODUCTION_VM_IP is set on the jenkins container.
+
 pipeline {
   agent any
 
@@ -7,6 +10,7 @@ pipeline {
   }
 
   triggers {
+    // jenkins scm polling can't go below about a minute
     pollSCM('* * * * *')
   }
 
@@ -30,7 +34,7 @@ pipeline {
       }
     }
 
-    stage('Unit tests') {
+    stage('Tests') {
       steps {
         sh './mvnw -B -ntp test -Dsurefire.excludes=**/PostgresIntegrationTests.java,**/MySqlIntegrationTests.java'
       }
@@ -49,7 +53,7 @@ pipeline {
             token = readFile('/var/jenkins_home/sonar_token').trim()
           }
           if (!token?.trim()) {
-            error('Missing /var/jenkins_home/sonar_token. Re-run Ansible (Sonar token bootstrap) or configure Jenkins credential sonar-token.')
+            error('No sonar token file. Run ansible again or add the sonar-token credential in jenkins.')
           }
           withEnv(["SONAR_TOKEN=${token}"]) {
             sh '''
@@ -63,7 +67,7 @@ pipeline {
       }
     }
 
-    stage('Security scan (ZAP baseline)') {
+    stage('Security scan (OWASP ZAP)') {
       steps {
         sh '''
           set +e
@@ -96,7 +100,7 @@ pipeline {
       }
     }
 
-    stage('Deploy to production (Ansible)') {
+    stage('Deploy') {
       steps {
         sh '''
           chmod 600 /var/jenkins_home/.ssh/id_rsa || true
